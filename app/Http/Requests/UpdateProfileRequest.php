@@ -7,29 +7,35 @@ use Illuminate\Support\Facades\Auth;
 
 class UpdateProfileRequest extends FormRequest
 {
-    /**
-     * Определяет, авторизован ли пользователь для выполнения этого запроса.
-     */
     public function authorize()
     {
-        // Используем фасад Auth вместо глобального хелпера auth()
-        return Auth::check();
+        return Auth::check(); // Allow only authenticated users
     }
 
-    /**
-     * Правила валидации для обновления профиля.
-     */
     public function rules()
     {
-        // Получаем ID текущего пользователя, чтобы исключить его email из проверки уникальности
-        $userId = $this->user() ? $this->user()->id : null;
-
         return [
-            'name'              => 'required|string|max:255',
-            'email'             => 'required|email|unique:users,email,' . $userId,
-            'current_password'  => 'nullable|min:6',
-            'password'          => 'nullable|min:6|confirmed',
-            'avatar'            => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . Auth::id(),
+            'current_password' => 'nullable|min:6',
+            'password' => 'nullable|min:6|confirmed',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+            'name.required' => 'Name is required!',
+            'email.required' => 'Email is required!',
+            'email.email' => 'Invalid email format!',
+            'email.unique' => 'This email is already taken!',
+            'current_password.min' => 'Current password must be at least 6 characters!',
+            'password.min' => 'New password must be at least 6 characters!',
+            'password.confirmed' => 'New password confirmation does not match!',
+            'avatar.image' => 'The avatar must be an image!',
+            'avatar.mimes' => 'The avatar must be in jpeg, png, jpg, or gif format!',
+            'avatar.max' => 'The avatar size must not exceed 2MB!',
         ];
     }
 }

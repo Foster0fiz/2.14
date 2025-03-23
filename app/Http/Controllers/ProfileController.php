@@ -2,63 +2,38 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\UpdateProfileRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use App\Models\User;
 
 class ProfileController extends Controller
 {
     public function edit()
     {
-        return view('profile.edit');
+        return view('profile.edit', ['user' => Auth::user()]);
     }
 
-    public function update(Request $request)
-{
-    $user = Auth::user();
-    $data = $request->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|email|unique:users,email,' . $user->id,
-        'current_password' => 'nullable|min:6',
-        'password' => 'nullable|min:6|confirmed',
-        'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-    ]);
+    public function update(UpdateProfileRequest $request)
+    {
+        $user = Auth::user();
 
-    // Parolni o'zgartirish
-    if (!empty($data['password'])) {
-        if (!Hash::check($data['current_password'], $user->password)) {
-            return back()->withErrors(['current_password' => 'Current password is incorrect']);
+        if (!empty($request->password)) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return back()->withErrors(['current_password' => 'Current password is incorrect']);
+            }
+            $user->password = Hash::make($request->password);
         }
-        $user->password = Hash::make($data['password']);
-    }
 
-    // Avatarni yuklash
-    if ($request->hasFile('avatar')) {
-        // Удаляем старый аватар, если он есть
-        if ($user->avatar) {
-            Storage::delete($user->avatar);
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $user->avatar = $request->file('avatar')->store('avatars', 'public');
         }
-        
-        // Загружаем новый аватар в storage/app/public/avatars
-        $user->avatar = $request->file('avatar')->store('avatars', 'public');
+
+        $user->update($request->only(['name', 'email']));
+
+        return redirect()->route('dashboard')->with('success', 'Profile updated successfully!');
     }
-    
-
-    $user = Auth::user(); // Загружаем текущего пользователя
-
-
-
-$user->name = $data['name'];
-$user->email = $data['email'];
-
-$user->save();
-
-
-
-    // ✅ Foydalanuvchini dashboard sahifasiga yo‘naltirish
-    return redirect()->route('dashboard')->with('success', 'Profile updated successfully!');
-}
-
 }
